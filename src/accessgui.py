@@ -2,7 +2,7 @@
 # -*- coding: utf-8 -*-
 # vim:ts=4:sw=4:softtabstop=4:smarttab:expandtab
 
-# Copyright 2015-2017 Kevin B. Hendricks, Stratford Ontario
+# Copyright 2018 Kevin B. Hendricks, Stratford Ontario
 
 # This plugin's source code is available under the GNU LGPL Version 2.1 or GNU LGPL Version 3 License.
 # See https://www.gnu.org/licenses/old-licenses/lgpl-2.1.en.html or
@@ -39,9 +39,16 @@ def GUIUpdateFromList(title, list, basewidth):
     ls.pack(side="top", fill="both", expand=True)
     localRoot.withdraw()
     localRoot.update_idletasks()
-    framesize = (basewidth*2, basewidth*2)
     w = localRoot.winfo_screenwidth()
     h = localRoot.winfo_screenheight()
+    // make sure our frame actually fits on the users screen
+    framewidth = basewidth*2
+    frameheight = basewidth*2
+    if framewidth > w:
+        framewidth = w
+    if frameheight > h:
+        frameheight = h
+    framesize = (framewidth, frameheight)
     x = w//2 - framesize[0]//2
     y = h//2 - framesize[1]//2
     localRoot.geometry("%dx%d+%d+%d" % (framesize + (x,y)))
