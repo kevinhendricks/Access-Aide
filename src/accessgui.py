@@ -41,7 +41,7 @@ def GUIUpdateFromList(title, list, basewidth):
     localRoot.update_idletasks()
     w = localRoot.winfo_screenwidth()
     h = localRoot.winfo_screenheight()
-    // make sure our frame actually fits on the users screen
+    # make sure our frame actually fits on the users screen
     framewidth = basewidth*2
     frameheight = basewidth*2
     if framewidth > w:
