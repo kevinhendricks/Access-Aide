@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<plugin>
+<name>Access-Aide</name>
+<type>edit</type>
+<author>KevinH</author>
+<description>Improve Accessibility of ePub3 epubs</description>
+<engine>python3.4</engine>
+<version>0.4.0</version>
+<autostart>true</autostart>
+<uatoclose>false</autoclose>
+<oslist>osx,win,unx</oslist>
+</plugin>

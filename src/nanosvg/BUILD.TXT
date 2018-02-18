@@ -1,0 +1,15 @@
+Building on OSX
+    export MACOSX_DEPLOYMENT_TARGET=10.9
+    clang -Wall -O2 -I. -o nsvg2png nsvg2png.c
+
+Building on Linux
+    gcc -Wall -O2 -I. -o nsvg2png nsvg2png.c -lm
+
+Building on Windows
+
+  with MinGW
+    gcc -Wall -O2 -I. -o nsvg2png.exe nsvg2png.c
+
+  with VS2015 command prompt (VS2015 is the minimum required)
+    cl /O2 /W4 /nologo nsvg2png.c /link /out:nsvg2png.exe
+
