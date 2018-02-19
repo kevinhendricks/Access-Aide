@@ -13,6 +13,7 @@ from __future__ import unicode_literals, division, absolute_import, print_functi
 import sys
 import os
 import tempfile, shutil
+import re
 import inspect
 import subprocess
 from subprocess import Popen, PIPE
@@ -128,6 +129,20 @@ def xmldecode(data):
     newdata = newdata.replace('&amp;', '&')
     return newdata
 
+whitespace_re = re.compile("\s+")
+
+# handle possible space delimtied multiple attribute values
+def parse_attribute(avalue):
+    vals = []
+    if avalue is None:
+        return vals
+    val = avalue.strip()
+    if " " in val:
+        vals = whitespace_re.split(val)
+    else:
+        if val != "":
+            vals.append(val)
+    return vals
 
 # the plugin entry point
 def run(bk):
@@ -454,13 +469,20 @@ def convert_xhtml(bk, mid, href, plang, titlemap, etypemap, E3):
             if E3 and loctype == "id" and ttype in ("single", "begin"):
                 if "id" in tattr:
                     id = tattr["id"]
-                    if id == fragment and "epub:type" not in tattr:
-                        tattr["epub:type"] = etype
+                    if id == fragment:
+                        # handle epub:type possible multiple attribute values
+                        vals = parse_attribute(tattr.get("epub:type",""))
+                        if etype not in vals:
+                            vals.append(etype)
+                            tattr["epub:type"] = " ".join(vals)
 
             # add mssing epub:type for nav landmarks that have no fragments
             if E3 and loctype == "body" and tname == "body" and ttype == "begin":
-                    if "epub:type" not in tattr:
-                        tattr["epub:type"] = etype
+                # handle epub:type possible multiple attribute values
+                vals = parse_attribute(tattr.get("epub:type",""))
+                if etype not in vals:
+                    vals.append(etype)
+                    tattr["epub:type"] = " ".join(vals)
 
             # add primary language attributes to html tag
             if tname == "html" and ttype=="begin":
@@ -477,12 +499,19 @@ def convert_xhtml(bk, mid, href, plang, titlemap, etypemap, E3):
                 imglst.append((mid,filename,imgcnt,imgsrc,alttext)) 
 
             # build add any aria roles you know based on epub:type attributes
+            # handle multiple epub:type attribute values
+            # handle multiple aria role attribute values
             if E3:
-                if ttype in ["begin", "single"] and "epub:type" in tattr and "role" not in tattr:
-                    epubtype = tattr["epub:type"]
-                    if epubtype in _epubtype_aria_map:
-                        ariarole = _epubtype_aria_map[epubtype]
-                        tattr["role"] = ariarole
+                if ttype in ["begin", "single"] and "epub:type" in tattr:
+                    evals = parse_attribute(tattr["epub:type"])
+                    rvals = parse_attribute(tattr.get("role",""))
+                    for ept in evals:
+                        if ept in _epubtype_aria_map:
+                            ariarole = _epubtype_aria_map[ept]
+                            if ariarole not in rvals:
+                                rvals.append(ariarole)
+                    if len(rvals) > 0:
+                        tattr["role"] = " ".join(rvals)
 
             # inject any missing titles if possible
             if tname == "title" and ttype == "end" and "head" in tprefix:
