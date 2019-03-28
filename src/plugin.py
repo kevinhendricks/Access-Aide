@@ -65,7 +65,7 @@ _epubtype_aria_map = {
     "chapter"         : "doc-chapter",
     "colophon"        : "doc-colophon",
     "conclusion"      : "doc-conclusion",
-    "cover"           : "doc-cover",
+    "cover-image"     : "doc-cover",
     "credit"          : "doc-credit",
     "credits"         : "doc-credits",
     "dedication"      : "doc-dedication",
@@ -78,17 +78,18 @@ _epubtype_aria_map = {
     "footnote"        : "doc-footnote",
     "foreword"        : "doc-foreword",
     "glossary"        : "doc-glossary",
-    "glossterm"       : "term",
     "glossdef"        : "definition",
     "glossref"        : "doc-glossref",
+    "glossterm"       : "term",
+    "index"           : "doc-index",
     "introduction"    : "doc-introduction",
     "landmarks"       : "directory",
     "list"            : "list",
     "list-item"       : "listitem",
     "noteref"         : "doc-noteref",
     "notice"          : "doc-notice",
-    "pagebreak"       : "doc-pagebreak",
     "page-list"       : "doc-pagelist",
+    "pagebreak"       : "doc-pagebreak",
     "part"            : "doc-part",
     "preface"         : "doc-preface",
     "prologue"        : "doc-prologue",
@@ -102,6 +103,133 @@ _epubtype_aria_map = {
     "tip"             : "doc-tip",
     "toc"             : "doc-toc",
 }
+
+_aria_role_allowed_tags = {
+    "doc-abstract"       : ("section"),
+    "doc-acknowledgments": ("section"),
+    "doc-afterword"      : ("section"),
+    "doc-appendix"       : ("section"),
+    "doc-biblioentry"    : ("li"),
+    "doc-bibliography"   : ("section"),
+    "doc-biblioref"      : ("a"),
+    "doc-chapter"        : ("section"),
+    "doc-colophon"       : ("section"),
+    "doc-conclusion"     : ("section"),
+    "doc-cover"          : ("img"),
+    "doc-credit"         : ("section"),
+    "doc-credits"        : ("section"),
+    "doc-dedication"     : ("section"),
+    "doc-endnote"        : ("li"),
+    "doc-endnotes"       : ("section"),
+    "doc-epigraph"       : (),
+    "doc-epilogue"       : ("section"),
+    "doc-errata"         : ("section"),
+    "figure"             : (),
+    "doc-footnote"       : ("aside","footer","header"),
+    "doc-foreword"       : ("section"),
+    "doc-glossary"       : ("section"),
+    "definition"         : (),
+    "doc-glossref"       : ("a"),
+    "term"               : (),
+    "doc-index"          : ("nav","section"),
+    "doc-introduction"   : ("section"),
+    "directory"          : ("ol","ul"),
+    "list"               : (),
+    "listitem"           : (),
+    "doc-noteref"        : ("a"),
+    "doc-notice"         : ("section"),
+    "doc-pagelist"       : ("nav","section"),
+    "doc-pagebreak"      : ("hr"),
+    "doc-part"           : ("section"),
+    "doc-preface"        : ("section"),
+    "doc-prologue"       : ("section"),
+    "doc-pullquote"      : ("aside","section"),
+    "doc-qna"            : ("section"),
+    "doc-backlink"       : ("a"),
+    "doc-subtitle"       : ("h1","h2","h3","h4","h5","h6"),
+    "table"              : (),
+    "cell"               : (),
+    "row"                : (),
+    "doc-tip"            : ("aside"),
+    "doc-toc"            : ("nav","section"),
+}
+
+# these tags allow all aria roles
+# subject to some conditions
+# conditions field: (href_allowed, need_alt)
+_all_role_tags = {
+    "a"          : (False, False),
+    "abbr"       : (True, False),
+    "address"    : (True, False),
+    "b"          : (True, False),
+    "bdi"        : (True, False),
+    "bdo"        : (True, False),
+    "blockquote" : (True, False),
+    "br"         : (True, False),
+    "canvas"     : (True, False),
+    "cite"       : (True, False),
+    "code"       : (True, False),
+    "del"        : (True, False),
+    "dfn"        : (True, False),
+    "div"        : (True, False),
+    "em"         : (True, False),
+    "i"          : (True, False),
+    "img"        : (False, True),
+    "ins"        : (True, False),
+    "kbd"        : (True, False),
+    "mark"       : (True, False),
+    "output"     : (True, False),
+    "p"          : (True, False),
+    "pre"        : (True, False),
+    "q"          : (True, False),
+    "rp"         : (True, False),
+    "rt"         : (True, False),
+    "ruby"       : (True, False),
+    "s"          : (True, False),
+    "samp"       : (True, False),
+    "small"      : (True, False),
+    "span"       : (True, False),
+    "strong"     : (True, False),
+    "sub"        : (True, False),
+    "sup"        : (True, False),
+    "table"      : (True, False),
+    "tbody"      : (True, False),
+    "td"         : (True, False),
+    "tfoot"      : (True, False),
+    "thead"      : (True, False),
+    "th"         : (True, False),
+    "tr"         : (True, False),
+    "time"       : (True, False),
+    "u"          : (True, False),
+    "var"        : (True, False),
+    "wbr"        : (True, False)
+}
+
+# epub 3.0.2 and aria rules makes this quite a mess
+def _role_from_etype(etype, tname, has_href, has_alt):
+    # first get role for epub type from map
+    role = _epubtype_aria_map.get(etype, None)
+    if role is None:
+        return role
+    # a possible role exists, check if allowed
+    allowed = False
+    # check if role would be in a tag that allows all roles
+    # subject to conditions
+    if tname in _all_role_tags:
+        allowed = True
+        (href_allowed, need_alt) = _all_role_tags[tname]
+        if not href_allowed and has_href:
+            allowed = False
+        if need_alt and not has_alt:
+            allowed = False
+    if allowed:
+        return role
+    # still need to check for specifc additions/exceptions
+    if role in _aria_role_allowed_tags:
+        tagset = _aria_role_allowed_tags[role]
+        if tname in tagset:
+            return role
+    return None
 
 _USER_HOME = os.path.expanduser("~")
 
@@ -322,14 +450,16 @@ def run(bk):
 
     # Allow the User to Change Any alt text strings they desire
     basewidth = prefs['basewidth']
-    naltlist = GUIUpdateFromList("Update Alt Text for Each Image", altlist, basewidth)
+    naltlist = []
+    if len(altlist) > 0:
+       naltlist = GUIUpdateFromList("Update Alt Text for Each Image", altlist, basewidth)
 
     # done with temp folder so clean up after yourself
     shutil.rmtree(temp_dir)
 
 
     # process results of alt text gui updates and update the actual xhtml
-    print("\n\n Updating any changed alt attributes for img tags")
+    print("\n\nUpdating any changed alt attributes for img tags")
     ptr = 0
     for imgpath, altnew in naltlist:
         mid, filename, imgcnt, imgsrc, alttext = imglst[ptr]
@@ -505,11 +635,15 @@ def convert_xhtml(bk, mid, href, plang, titlemap, etypemap, E3):
                 if ttype in ["begin", "single"] and "epub:type" in tattr:
                     evals = parse_attribute(tattr["epub:type"])
                     rvals = parse_attribute(tattr.get("role",""))
+                    has_href = "href" in tattr
+                    has_alt = "alt" in tattr
                     for ept in evals:
-                        if ept in _epubtype_aria_map:
-                            ariarole = _epubtype_aria_map[ept]
+                        ariarole = _role_from_etype(ept, tname, has_href, has_alt)
+                        if ariarole is not None:
                             if ariarole not in rvals:
                                 rvals.append(ariarole)
+                    # multiple aria roles are discouraged only first
+                    # will be used
                     if len(rvals) > 0:
                         tattr["role"] = " ".join(rvals)
 

@@ -1,2 +1,7 @@
+v042
+  - use epub 3.0.2 rules for mapping epub types to aria roles to keep
+    future epubcheck versions happy
+v041
+  - not released, internal changes
 v040
   - first public release of the Access-Aide Plugin
