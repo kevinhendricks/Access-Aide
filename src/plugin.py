@@ -205,7 +205,7 @@ _all_role_tags = {
     "wbr"        : (True, False)
 }
 
-# epub 3.0.2 and aria rules makes this quite a mess
+# epub 3.2 and aria rules makes this quite a mess
 def _role_from_etype(etype, tname, has_href, has_alt):
     # first get role for epub type from map
     role = _epubtype_aria_map.get(etype, None)
@@ -516,10 +516,12 @@ def parse_nav(bk, navid, navfilename):
                         path = os.path.normcase(path)
                         filename = os.path.basename(path)
                         fragment = urlobj.fragment
-                        if fragment == '':
-                            etypemap[filename] = ("body", '', etype)
-                        else:
+                        if fragment != '':
                             etypemap[filename] = ("id", fragment, etype)
+                        # else:
+                            # Arrgghhh! - epub:type tags on body tags 
+                            # are now "strongly discouraged"
+                            # etypemap[filename] = ("body", '', etype)
         else:
             if navtitle is None and tagprefix.endswith("h1"):
                 navtitle = text
@@ -606,13 +608,15 @@ def convert_xhtml(bk, mid, href, plang, titlemap, etypemap, E3):
                             vals.append(etype)
                             tattr["epub:type"] = " ".join(vals)
 
-            # add mssing epub:type for nav landmarks that have no fragments
-            if E3 and loctype == "body" and tname == "body" and ttype == "begin":
-                # handle epub:type possible multiple attribute values
-                vals = parse_attribute(tattr.get("epub:type",""))
-                if etype not in vals:
-                    vals.append(etype)
-                    tattr["epub:type"] = " ".join(vals)
+            # This has been "strongly discouraged" so disabling it
+
+            # add missing epub:type for nav landmarks that have no fragments
+            # if E3 and loctype == "body" and tname == "body" and ttype == "begin":
+            #     # handle epub:type possible multiple attribute values
+            #     vals = parse_attribute(tattr.get("epub:type",""))
+            #     if etype not in vals:
+            #         vals.append(etype)
+            #         tattr["epub:type"] = " ".join(vals)
 
             # add primary language attributes to html tag
             if tname == "html" and ttype=="begin":

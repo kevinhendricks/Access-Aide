@@ -1,5 +1,8 @@
+v043
+  - include updates to accessgui.py that were somehow dropped
+  - update plugin.py to not add epub:type attributes to the body tag as this is somehow now taboo
 v042
-  - use epub 3.0.2 rules for mapping epub types to aria roles to keep
+  - use epub 3.0.2/3.2 rules for mapping epub types to aria roles to keep
     future epubcheck versions happy
 v041
   - not released, internal changes

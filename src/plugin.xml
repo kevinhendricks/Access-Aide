@@ -5,7 +5,7 @@
 <author>KevinH</author>
 <description>Improve Accessibility of ePub3 epubs</description>
 <engine>python3.4</engine>
-<version>0.4.2</version>
+<version>0.4.3</version>
 <autostart>true</autostart>
 <uatoclose>false</autoclose>
 <oslist>osx,win,unx</oslist>
