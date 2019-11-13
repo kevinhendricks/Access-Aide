@@ -1,3 +1,8 @@
+v050
+  - update Access-Aide to work with the new Sigil 1.0 plugin interface
+  - adds ability to run on non-Sigil standard epub layouts
+  - should still work just fine with Sigil version before Sigil-0.9.991
+
 v043
   - include updates to accessgui.py that were somehow dropped
   - update plugin.py to not add epub:type attributes to the body tag as this is somehow now taboo

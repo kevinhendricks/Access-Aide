@@ -298,7 +298,7 @@ def run(bk):
 
     # find the primary language (first dc:language metadata value)
     # and update it to include the accessibility metadata
-    print("\nUpdating the content.opf with accessibility schema")
+    print("\nUpdating the OPF with accessibility schema")
     plang = None
     res = []
     has_access_meta = False
@@ -364,6 +364,9 @@ def run(bk):
                 path = unquote(urlobj.path)
                 path = os.path.normcase(path)
                 navfilename = os.path.basename(path)
+                navbookpath = "OEBPS/Text/" + navfilename
+                if bk.launcher_version() >= 20190927:
+                    navbookpath = bk.id_to_bookpath(navid)
         if navid is None:
             print("Error: nav property missing from the opf manifest propertiese")
             return -1
@@ -377,12 +380,15 @@ def run(bk):
     titlemap = {}
     etypemap = {}
     if E3:
-        # epub3 - collect titlemap and etypemap from the nav
-        titlemap, etypemap = parse_nav(bk, navid, navfilename)
+        # epub3 - collect titlemap and etypemap from the nav (key is file bookpath)
+        titlemap, etypemap = parse_nav(bk, navid, navbookpath)
     else:
-        # epub2 - collect titlemap from the ncx
+        # epub2 - collect titlemap from the ncx (key is file bookpath)
         tocid = bk.gettocid()
-        titlemap = parse_ncx(bk, tocid)
+        ncxbookpath = "OEBPS/toc.ncx"
+        if bk.launcher_version() >= 20190927:
+            ncxbookpath = bk.id_to_bookpath(tocid)
+        titlemap = parse_ncx(bk, tocid, ncxbookpath)
 
     # now process every xhtml file (including the nav for E3)
     # adding primary language to html tag, setting the title,
@@ -392,8 +398,12 @@ def run(bk):
     print("\nProcessing all xhtml files to add accessibility features")
     imglst = []
     for mid, href in bk.text_iter():
-        print("   ... updating: ", href, " with manifest id: ", mid)
-        xhtmldata, ilst = convert_xhtml(bk, mid, href, plang, titlemap, etypemap, E3)
+        bookpath = "OEBPS/" + href
+        if bk.launcher_version() >= 20190927:
+            bookpath = bk.id_to_bookpath(mid)
+    
+        print("   ... updating: ", bookpath, " with manifest id: ", mid)
+        xhtmldata, ilst = convert_xhtml(bk, mid, bookpath, plang, titlemap, etypemap, E3)
         bk.writefile(mid, xhtmldata)
         if len(ilst) > 0:
             imglst.extend(ilst)
@@ -402,17 +412,21 @@ def run(bk):
     print("\nBuilding a GUI to speed image alt attribute updates")
 
     # first prevent unsafe access of any files within Sigil 
-    # by creating a temporary copy of each image in their own Images directory
+    # by creating a temporary copy of each image in temp_dir
     temp_dir = tempfile.mkdtemp()
-    os.makedirs(os.path.join(temp_dir, "Images"))
     run_nsvg2png = False
     for mid, href, mime in bk.image_iter():
         imgdata = bk.readfile(mid)
+        bookpath = "OEBPS/" + href
+        if bk.launcher_version() >= 20190927:
+            bookpath = bk.id_to_bookpath(mid)
         if mime == "image/svg+xml":
             imgdata = imgdata.encode('utf-8')
             run_nsvg2png = True
-        filename = bk.href_to_basename(href)
-        filepath = os.path.join(temp_dir, "Images", filename)
+        filepath = os.path.join(temp_dir, bookpath.replace("/",os.sep))
+        destdir = os.path.dirname(filepath)
+        if not os.path.exists(destdir):
+            os.makedirs(destdir)
         with open(filepath, "wb") as f:
             f.write(imgdata)
         if run_nsvg2png:
@@ -434,19 +448,21 @@ def run(bk):
 
     # now build a list of images and current alt text to pass to the gui
     altlist = []
-    for (mid, filename, imgcnt, imgsrc, alttext) in imglst:
-        print("   ... ", filename, " #", imgcnt, " src:", imgsrc, " alt text:", alttext)
+    for (mid, bookpath, imgcnt, imgsrc, alttext) in imglst:
+        print("   ... ", bookpath, " #", imgcnt, " src:", imgsrc, " alt text:", alttext)
         urlobj = urlparse(imgsrc)
-        path = unquote(urlobj.path)
-        path = os.path.normcase(path)
-        if path.startswith('..'):
-            path = path[3:]
-        path = os.path.join(temp_dir, path)
+        apath = unquote(urlobj.path)
+        apath = os.path.normcase(apath)
+        filename = os.path.basename(apath)
+        imgbookpath = "OEBPS/Images/" + filename
+        if bk.launcher_version() >= 20190927:
+            imgbookpath = bk.build_bookpath(apath, bk.get_startingdir(bookpath))
+        imgpath = os.path.join(temp_dir, imgbookpath.replace("/",os.sep))
         # handle svg that have been converted to pngs
-        if path.endswith(".svg"):
-            path = path + ".png"
+        if imgpath.endswith(".svg"):
+            imgpath = imgpath + ".png"
         alttxt = xmldecode(alttext)
-        altlist.append([path, alttxt])
+        altlist.append([imgpath, alttxt])
 
     # Allow the User to Change Any alt text strings they desire
     basewidth = prefs['basewidth']
@@ -462,9 +478,9 @@ def run(bk):
     print("\n\nUpdating any changed alt attributes for img tags")
     ptr = 0
     for imgpath, altnew in naltlist:
-        mid, filename, imgcnt, imgsrc, alttext = imglst[ptr]
+        mid, bookpath, imgcnt, imgsrc, alttext = imglst[ptr]
         if alttext != altnew:
-            print("    ... alt text needs to be updated in: ", filename, imgsrc, altnew)
+            print("    ... alt text needs to be updated in: ", bookpath, imgsrc, altnew)
             data = bk.readfile(mid)
             data = update_alt_text(bk, data, imgcnt, imgsrc, altnew)
             bk.writefile(mid, data)
@@ -483,9 +499,12 @@ def run(bk):
 # to use as html head title tags, also parse the first h1 tag to get a potential 
 # title for the nav file itself
 # and parse the landmarks to collect epub:type semantics set on files and fragments
-# returns the dictioanry of titles by filename and dictionary of epub:type landmarks
-def parse_nav(bk, navid, navfilename):
+# returns the dictionary of titles by bookpath and dictionary of epub:type landmarks
+def parse_nav(bk, navid, navbookpath):
     print("\nParsing the nav to collect landmark epub:type info and titles for each xhtml file")
+    nav_base = "OEBPS/Text"
+    if bk.launcher_version() >= 20190927:
+        nav_base = bk.get_startingdir(navbookpath)
     titlemap = {}
     etypemap = {}
     qp = bk.qp
@@ -495,7 +514,7 @@ def parse_nav(bk, navid, navfilename):
     getlabel = False
     navtitle = None
     tochref = None
-    prevfilename = ""
+    prevbookpath = ""
     for text, tagprefix, tagname, tagtype, tagattr in qp.parse_iter():
         if text is None:
             if tagname == "nav" and tagtype == "begin":
@@ -512,44 +531,53 @@ def parse_nav(bk, navid, navfilename):
                     if "epub:type" in tagattr:
                         etype = tagattr["epub:type"]
                         urlobj = urlparse(lmhref)
-                        path = unquote(urlobj.path)
-                        path = os.path.normcase(path)
-                        filename = os.path.basename(path)
+                        apath = unquote(urlobj.path)
+                        apath = os.path.normcase(apath)
+                        filename = os.path.basename(apath)
+                        bookpath = "OEBPS/Text/" + filename
+                        if bk.launcher_version() >= 20190927:
+                           bookpath = bk.build_bookpath(apath, nav_base)
                         fragment = urlobj.fragment
                         if fragment != '':
-                            etypemap[filename] = ("id", fragment, etype)
+                            etypemap[bookpath] = ("id", fragment, etype)
                         # else:
                             # Arrgghhh! - epub:type tags on body tags 
                             # are now "strongly discouraged"
-                            # etypemap[filename] = ("body", '', etype)
+                            # etypemap[bookpath] = ("body", '', etype)
         else:
             if navtitle is None and tagprefix.endswith("h1"):
                 navtitle = text
-                titlemap[navfilename] = navtitle
+                titlemap[navbookpath] = navtitle
             if in_toc and getlabel:
                 if tochref is not None:
                     urlobj = urlparse(tochref)
-                    path = unquote(urlobj.path)
-                    path = os.path.normcase(path)
-                    filename = os.path.basename(path)
-                    if filename != prevfilename:
-                        titlemap[filename] = text
-                    prevfilename = filename
+                    apath = unquote(urlobj.path)
+                    apath = os.path.normcase(apath)
+                    filename = os.path.basename(apath)
+                    bookpath = "OEBPS/Text/" + filename;
+                    if bk.launcher_version() >= 20190927:
+                        bookpath = bk.build_bookpath(path, nav_base)
+                    if bookpath != prevbookpath:
+                        titlemap[bookpath] = text
+                    prevbookpath = bookpath
                 tochref = None
                 getlabel = False
 
     return titlemap, etypemap
 
 
-# parse the current toc.ncx to create a titlemap
-def parse_ncx(bk, tocid):
+# parse the current toc.ncx to create a titlemap of bookpath to nav label
+def parse_ncx(bk, tocid, ncxbookpath):
+    ncx_base = "OEBPS"
+    if bk.launcher_version() >= 20190927:
+        ncx_base = bk.get_startingdir(ncxbookpath)
     ncxdata = bk.readfile(tocid)
     bk.qp.setContent(ncxdata)
     titlemap = {}
     navlable = None
     skip_if_newline = False
     lvl = 0
-    prevfilename = ""
+    prevbookpath = ""
     for txt, tp, tname, ttype, tattr in bk.qp.parse_iter():
         if txt is not None:
             if tp.endswith('.navpoint.navlabel.text'):
@@ -558,12 +586,15 @@ def parse_ncx(bk, tocid):
             if tname == "content" and tattr is not None and "src" in tattr and tp.endswith("navpoint"):
                 href =  tattr["src"]
                 urlobj = urlparse(href)
-                path = unquote(urlobj.path)
-                path = os.path.normcase(path)
-                filename = os.path.basename(path)
-                if filename != prevfilename:
-                    titlemap[filename] = navlabel
-                prevfilename = filename
+                apath = unquote(urlobj.path)
+                apath = os.path.normcase(apath)
+                filename = os.path.basename(apath)
+                bookpath = "OEBPS/Text/" + filename
+                if bk.launcher_version() >= 20190927:
+                    bookpath = bk.build_bookpath(apath, ncx_base)
+                if bookpath != prevbookpath:
+                    titlemap[bookpath] = navlabel
+                prevbookpath = bookpath
                 navlabel = None
     return titlemap
 
@@ -574,19 +605,18 @@ def parse_ncx(bk, tocid):
 #  - collect info on image use and contents of related alt attributes
 #  - add known epub:type semantics from nav landmarks to body tag or tag with "fragment" 
 #  - add aria role attributes to complement existing epub:type attributes
-# returns updated xhtml and list of lists for images (manifest_id, filename, image_count, image_src, alt_text)
-def convert_xhtml(bk, mid, href, plang, titlemap, etypemap, E3):
+# returns updated xhtml and list of lists for images (manifest_id, bookpath, image_count, image_src, alt_text)
+def convert_xhtml(bk, mid, bookpath, plang, titlemap, etypemap, E3):
     res = []
     #parse the xhtml, converting on the fly to update it
     qp = bk.qp
     qp.setContent(bk.readfile(mid))
-    filename = bk.href_to_basename(href)
     maintitle = None
     loctype = ""
     fragment = ""
     etype = ""
-    if filename in etypemap:
-        (loctype, fragment, etype) = etypemap[filename] 
+    if bookpath in etypemap:
+        (loctype, fragment, etype) = etypemap[bookpath] 
     imgcnt = 0
     imglst = []
     for text, tprefix, tname, ttype, tattr in qp.parse_iter():
@@ -630,7 +660,7 @@ def convert_xhtml(bk, mid, href, plang, titlemap, etypemap, E3):
                 alttext = tattr.get("alt", "")
                 tattr["alt"] = alttext
                 imgsrc = tattr.get("src","")
-                imglst.append((mid,filename,imgcnt,imgsrc,alttext)) 
+                imglst.append((mid,bookpath,imgcnt,imgsrc,alttext)) 
 
             # build add any aria roles you know based on epub:type attributes
             # handle multiple epub:type attribute values
@@ -654,7 +684,7 @@ def convert_xhtml(bk, mid, href, plang, titlemap, etypemap, E3):
             # inject any missing titles if possible
             if tname == "title" and ttype == "end" and "head" in tprefix:
                 if maintitle is None:
-                    res.append(titlemap.get(filename,""))
+                    res.append(titlemap.get(bookpath,""))
 
             res.append(qp.tag_info_to_xml(tname, ttype, tattr))
 
