@@ -556,7 +556,7 @@ def parse_nav(bk, navid, navbookpath):
                     filename = os.path.basename(apath)
                     bookpath = "OEBPS/Text/" + filename;
                     if bk.launcher_version() >= 20190927:
-                        bookpath = bk.build_bookpath(path, nav_base)
+                        bookpath = bk.build_bookpath(apath, nav_base)
                     if bookpath != prevbookpath:
                         titlemap[bookpath] = text
                     prevbookpath = bookpath
