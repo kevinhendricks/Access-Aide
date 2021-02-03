@@ -311,8 +311,8 @@ def run(bk):
             if tagprefix.endswith("dc:language"):
                 if plang is None:
                     plang = text
-                    if "-" in text:
-                        plang, region = text.split("-")
+                    # if "-" in text:
+                    #     plang, region = text.split("-")
         else:
             if tagname == "meta" and tagtype == "begin":
                 if "property" in tagattr:
@@ -621,9 +621,9 @@ def convert_xhtml(bk, mid, bookpath, plang, titlemap, etypemap, E3):
     imglst = []
     for text, tprefix, tname, ttype, tattr in qp.parse_iter():
         if text is not None:
-            # get any existing title in head
+            # get any existing title in head, ignore whitespace
             if "head" in tprefix and tprefix.endswith("title"):
-                if text != "":
+                if text.strip() != "":
                     maintitle = text
             res.append(text)
         else:
@@ -685,6 +685,14 @@ def convert_xhtml(bk, mid, bookpath, plang, titlemap, etypemap, E3):
             if tname == "title" and ttype == "end" and "head" in tprefix:
                 if maintitle is None:
                     res.append(titlemap.get(bookpath,""))
+
+            # inject any missing titles in self closed title tags  if needed
+            if tname == "title" and ttype == "single" and "head" in tprefix:
+                ttype = "begin"
+                res.append(qp.tag_info_to_xml(tname, ttype, tattr))
+                res.append(titlemap.get(bookpath,""))
+                tattr = {}
+                ttype = "end"
 
             res.append(qp.tag_info_to_xml(tname, ttype, tattr))
 

@@ -1,3 +1,10 @@
+v052
+  - no longer consider whitespace alone a valid xhtml title
+  - properly look for and handle self-closed title tags in head when looking
+       to replace titles
+  - once Sigil v1.50 is released with updated quickparser, an extra space will no
+       longer be added to xml headers during serialization
+
 v051
   - fix leftover typo that could cause a bug
 
