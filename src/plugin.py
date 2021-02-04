@@ -362,7 +362,6 @@ def run(bk):
                 navid = mid
                 urlobj = urlparse(href)
                 path = unquote(urlobj.path)
-                path = os.path.normcase(path)
                 navfilename = os.path.basename(path)
                 navbookpath = "OEBPS/Text/" + navfilename
                 if bk.launcher_version() >= 20190927:
@@ -452,7 +451,6 @@ def run(bk):
         print("   ... ", bookpath, " #", imgcnt, " src:", imgsrc, " alt text:", alttext)
         urlobj = urlparse(imgsrc)
         apath = unquote(urlobj.path)
-        apath = os.path.normcase(apath)
         filename = os.path.basename(apath)
         imgbookpath = "OEBPS/Images/" + filename
         if bk.launcher_version() >= 20190927:
@@ -532,7 +530,6 @@ def parse_nav(bk, navid, navbookpath):
                         etype = tagattr["epub:type"]
                         urlobj = urlparse(lmhref)
                         apath = unquote(urlobj.path)
-                        apath = os.path.normcase(apath)
                         filename = os.path.basename(apath)
                         bookpath = "OEBPS/Text/" + filename
                         if bk.launcher_version() >= 20190927:
@@ -552,7 +549,6 @@ def parse_nav(bk, navid, navbookpath):
                 if tochref is not None:
                     urlobj = urlparse(tochref)
                     apath = unquote(urlobj.path)
-                    apath = os.path.normcase(apath)
                     filename = os.path.basename(apath)
                     bookpath = "OEBPS/Text/" + filename;
                     if bk.launcher_version() >= 20190927:
@@ -587,7 +583,6 @@ def parse_ncx(bk, tocid, ncxbookpath):
                 href =  tattr["src"]
                 urlobj = urlparse(href)
                 apath = unquote(urlobj.path)
-                apath = os.path.normcase(apath)
                 filename = os.path.basename(apath)
                 bookpath = "OEBPS/Text/" + filename
                 if bk.launcher_version() >= 20190927:
@@ -694,6 +689,12 @@ def convert_xhtml(bk, mid, bookpath, plang, titlemap, etypemap, E3):
                 tattr = {}
                 ttype = "end"
 
+            # work around quickparser serialization bug in Sigil 1.4.3 and earlier
+            if bk.launcher_version() < 20210203:
+                if ttype == "xmlheader":
+                    if tattr and "special" in tattr:
+                        tattr["special"] = tattr["special"].strip()
+                        
             res.append(qp.tag_info_to_xml(tname, ttype, tattr))
 
     return "".join(res), imglst
