@@ -29,7 +29,7 @@ def resize_image_copy(basewidth, image):
         bg.paste(image, (int((size[0] - image.size[0]) / 2), int((size[1] - image.size[1]) / 2)))
         return ImageTk.PhotoImage(bg) 
     scalefactor = basewidth/float(imgwidth)
-    newheight = int((float(imgheight)*float(scalefactor)))
+    newheight = max(int((float(imgheight)*float(scalefactor))),1)
     return ImageTk.PhotoImage(image.resize((basewidth, newheight), Image.ANTIALIAS))
 
 

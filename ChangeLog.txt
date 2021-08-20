@@ -1,3 +1,6 @@
+v053
+  - fix thumbnail scaling bug for wide but thin images that get truncated to 0 pixels in height
+  
 v052
   - no longer consider whitespace alone a valid xhtml title
   - properly look for and handle self-closed title tags in head when looking
