@@ -332,11 +332,13 @@ def run(bk):
                     res.append('<meta property="schema:accessMode">visual</meta>\n')
                     res.append('<meta property="schema:accessModeSufficient">textual</meta>\n')
                     res.append('<meta property="schema:accessibilityFeature">structuralNavigation</meta>\n')
+                    res.append('<meta property="schema:accessibilityHazard">none</meta>\n')
                 if not E3 and not has_access_meta:
                     res.append('<meta name="schema:accessibilitySummary" content="This publication conforms to WCAG 2.0 AA."/>\n')
                     res.append('<meta name="schema:accessMode" content="textual"/>\n')
                     res.append('<meta name="schema:accessModeSufficient" content="textual"/>\n')
                     res.append('<meta name="schema:accessibilityFeature" content="structuralNavigation"/>\n')
+                    res.append('<meta name="schema:accessibilityHazard" content="none"/>\n')
             res.append(qp.tag_info_to_xml(tagname, tagtype, tagattr))
     metaxml = "".join(res)
     bk.setmetadataxml(metaxml)

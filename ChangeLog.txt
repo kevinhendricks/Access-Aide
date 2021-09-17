@@ -1,3 +1,6 @@
+v054
+  - add schema:accessibilityHazard metadata now required by the ACE Checker
+
 v053
   - fix thumbnail scaling bug for wide but thin images that get truncated to 0 pixels in height
   

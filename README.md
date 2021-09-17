@@ -1,8 +1,8 @@
 **[Plugin] Access-Aide - help improve epub accessibility**
 
-Updated: August 20, 2021
+Updated: September 17, 2021
 
-Current Version: "0.5.3"
+Current Version: "0.5.4"
 
 License/Copying: GNU LGPL Version 2 or Version 3, your choice. Any other license terms are only available directly from the author in writing.
 
@@ -17,6 +17,8 @@ The goal of this program is to help improve the Accessibility of your epub to he
     schema:accessModeSufficient:    textual
     schema:accessibilityFeature:    structuralNavigation
     schema:accessibilitySummary:    This publication conforms to WCAG 2.0 AA.
+    schema:accessibilityHazard:     none
+
 
 **Before you run Access-Aide**
 Before running AccessAide you should make sure your epub has passed epubcheck and that you have properly added the appropriate semantic tags to mark your ebook files appropriately. 
@@ -40,7 +42,9 @@ Then a graphical user interface is generated showing a thumbnail of every img ta
 **Limitations ...**
 1. In able to properly achieve the schema:accessModeSufficient: textual critieria, Access-Aide will abort when provided with epubs that use javascripts, audio resources, video resources, and mathml because Access-Aide simply can not tell if the proper textual descriptions are provided in these cases.
 
-2. svg image tags images are ignored as the "alt" attribute is not allowed on those tags. The proper way to handle svg: image tags is to provide the proper title and desc elements immediately after the svg start tag that contains the image element.
+2. The schema:accessibilityHazard set to none indicates you are using only static images with no Video and no anitmated gifs. You need to verify that.
+
+3. svg image tags images are ignored as the "alt" attribute is not allowed on those tags. The proper way to handle svg: image tags is to provide the proper title and desc elements immediately after the svg start tag that contains the image element.
 
 Access-Aide Plugin icon
 This plugin includes a plugin icon that is in the public domain and provided by the The Accessible Icon Project that can be found at: https://accessibleicon.org for the express purpose for promoting accessibility.
