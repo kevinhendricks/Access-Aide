@@ -42,7 +42,7 @@ Then a graphical user interface is generated showing a thumbnail of every img ta
 **Limitations ...**
 1. In able to properly achieve the schema:accessModeSufficient: textual critieria, Access-Aide will abort when provided with epubs that use javascripts, audio resources, video resources, and mathml because Access-Aide simply can not tell if the proper textual descriptions are provided in these cases.
 
-2. The schema:accessibilityHazard set to none indicates you are using only static images with no Video and no anitmated gifs. You need to verify that.
+2. The schema:accessibilityHazard set to none indicates you are using only **static** images with no Video and no animated gifs. You need to verify that or manually update that metadata in the opf.
 
 3. svg image tags images are ignored as the "alt" attribute is not allowed on those tags. The proper way to handle svg: image tags is to provide the proper title and desc elements immediately after the svg start tag that contains the image element.
 
