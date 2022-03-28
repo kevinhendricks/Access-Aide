@@ -7,6 +7,6 @@
 <engine>python3.4</engine>
 <version>0.5.4</version>
 <autostart>true</autostart>
-<uatoclose>false</autoclose>
+<autoclose>false</autoclose>
 <oslist>osx,win,unx</oslist>
 </plugin>
