@@ -1,3 +1,6 @@
+v055
+  - add workaround for parsing glitch in quickparser
+
 v054
   - add schema:accessibilityHazard metadata now required by the ACE Checker
 

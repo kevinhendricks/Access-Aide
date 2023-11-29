@@ -617,6 +617,14 @@ def convert_xhtml(bk, mid, bookpath, plang, titlemap, etypemap, E3):
     imgcnt = 0
     imglst = []
     for text, tprefix, tname, ttype, tattr in qp.parse_iter():
+        # bug in quickparser does not properly trim attribute names
+        if tattr:
+            nattr = {}
+            for attname, attval in tattr.items():
+                attname = attname.strip(' \v\t\n\r\f')
+                nattr[attname] = attval
+            tattr.clear()
+            tattr = nattr
         if text is not None:
             # get any existing title in head, ignore whitespace
             if "head" in tprefix and tprefix.endswith("title"):
