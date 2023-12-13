@@ -1,12 +1,13 @@
 **[Plugin] Access-Aide - help improve epub accessibility**
 
-Updated: November 29, 2023
+Updated: December 13, 2023
 
-Current Version: "0.5.5"
+Current Version: "0.9.01"
 
 License/Copying: GNU LGPL Version 2 or Version 3, your choice. Any other license terms are only available directly from the author in writing.
 
-Minimum Sigil Version: support for this plugin is provided for Sigil 0.9.0 and later using the Python 3.4 or later Python interpreter.
+Minimum Sigil Version: 1.6.0.
+Support for this plugin is provided for Sigil 1.6.0 and later using the Python 3.4 or later Python interpreter that supports Qt used in Python via PyQt5 or PySide6 for Qt6.
 
 
 **Goal**
@@ -25,7 +26,7 @@ Before running AccessAide you should make sure your epub has passed epubcheck an
 
 
 **How it Works**
-This edit plugin will read/edit the content.opf to determine the primary language used, identify any nav or ncx and will add the appropriate metadata.
+This edit plugin will read/edit the content.opf to determine the primary language used, identify any nav or ncx and will add the appropriate metadata and add xml:lang to the OPF package tag if missing.
 The ncx or nav is then parsed to collect titles for every xhtml file and in the case of the nav will also collect epub:type landmark information.
 
 Then for each xhtml file, the plugin will:
@@ -36,7 +37,7 @@ Then for each xhtml file, the plugin will:
 5. add in appropriate epub:type semantic tags (for epub3 only)
 6. map epub:type attributes to their appropriate aria role attribute
 
-Then a graphical user interface is generated showing a thumbnail of every img tag image and its associated alt text description, so that the user can easily and quickly add improves textual descriptions for each image used
+Then a graphical user interface is generated showing a thumbnail of every img tag image and its associated alt text description, so that the user can easily and quickly add or improve textual descriptions for each image used
 
 
 **Limitations ...**
@@ -44,7 +45,7 @@ Then a graphical user interface is generated showing a thumbnail of every img ta
 
 2. The schema:accessibilityHazard set to none indicates you are using only **static** images with no Video and no animated gifs. You need to verify that or manually update that metadata in the opf.
 
-3. svg image tags images are ignored as the "alt" attribute is not allowed on those tags. The proper way to handle svg: image tags is to provide the proper title and desc elements immediately after the svg start tag that contains the image element.
+3. svg:image tags are ignored as the "alt" attribute is not allowed on those tags. The proper way to handle svg:image tags is to provide the proper title and desc elements immediately after the svg start tag that contains the image element.
 
 Access-Aide Plugin icon
 This plugin includes a plugin icon that is in the public domain and provided by the The Accessible Icon Project that can be found at: https://accessibleicon.org for the express purpose for promoting accessibility.

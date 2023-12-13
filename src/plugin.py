@@ -2,57 +2,26 @@
 # -*- coding: utf-8 -*-
 # vim:ts=4:sw=4:softtabstop=4:smarttab:expandtab
 
-# Copyright 2015-2017 Kevin B. Hendricks, Stratford Ontario
+# Copyright 2015-2023 Kevin B. Hendricks, Stratford Ontario
 
 # This plugin's source code is available under the GNU LGPL Version 2.1 or GNU LGPL Version 3 License.
 # See https://www.gnu.org/licenses/old-licenses/lgpl-2.1.en.html or
 # https://www.gnu.org/licenses/lgpl.html for the complete text of the license.
-
-from __future__ import unicode_literals, division, absolute_import, print_function
 
 import sys
 import os
 import tempfile, shutil
 import re
 import inspect
-import subprocess
-from subprocess import Popen, PIPE
 
-# Conditionalize imports to revent failure without feedback on python 2.7
-PY3 = sys.version_info[0] == 3
-if PY3:
-    from accessgui import GUIUpdateFromList
-    from urllib.parse import unquote
-    from urllib.parse import urlparse
+from accessgui import GUIUpdateFromList
+from urllib.parse import unquote
+from urllib.parse import urlparse
 
+# define unit separator
+_US = chr(31)
 
-# use subprocess to run a commandline utility
-# that converts svg to png if needed. 
-# also ensures you have execute rights for unix based platforms
-SCRIPT_DIR = os.path.dirname(os.path.abspath(inspect.getfile(inspect.currentframe())))
-target = None
-xname = None
-is_64bit = sys.maxsize > 2**32
-if sys.platform.startswith('win'):
-    target = "win32"
-    xname = 'nsvg2png32.exe'
-    if is_64bit:
-        target = 'win64'
-        xname = 'nsvg2png64.exe'
-elif sys.platform.startswith('darwin'):
-    target = 'osx'
-    xname = 'nsvg2png'
-else:
-    target = 'unx32'
-    if is_64bit:
-        target = 'unx64'
-    xname = 'nsvg2png'
-
-exe_path = os.path.join(SCRIPT_DIR, target, xname)
-
-if target == 'osx' or target.startswith('unx'):
-    os.chmod(exe_path,0o744)
-
+_SCRIPT_DIR = os.path.dirname(os.path.abspath(inspect.getfile(inspect.currentframe())))
 
 _epubtype_aria_map = {
     "abstract"        : "doc-abstract",
@@ -275,10 +244,11 @@ def parse_attribute(avalue):
 # the plugin entry point
 def run(bk):
 
-    # epub2 epubs support only a subset of aria
-    epubversion = "2.0"
-    if bk.launcher_version() >= 20160102:
-        epubversion = bk.epub_version()
+    if bk.launcher_version() < 20210430:
+        print("Error: Access-Aide requires a newer version of Sigil >= 1.60")
+        return 1
+    
+    epubversion = bk.epub_version()
     E3 = epubversion.startswith("3")
     print("Processing an epub with version: ", epubversion)
 
@@ -296,8 +266,8 @@ def run(bk):
         return -1
 
 
-    # find the primary language (first dc:language metadata value)
-    # and update it to include the accessibility metadata
+    # find primary language from first dc:language tag
+    # and update metadata to include the accessibility metadata
     print("\nUpdating the OPF with accessibility schema")
     plang = None
     res = []
@@ -347,6 +317,7 @@ def run(bk):
         print("Error: at least one dc:language must be specified in the opf")
         return -1
 
+
     # Assume no mathml or javascript in epub2 for the time being until a real
     # test can be determined walking all of the xhtml files.
     # For E3 we can use the manifest properties
@@ -365,9 +336,7 @@ def run(bk):
                 urlobj = urlparse(href)
                 path = unquote(urlobj.path)
                 navfilename = os.path.basename(path)
-                navbookpath = "OEBPS/Text/" + navfilename
-                if bk.launcher_version() >= 20190927:
-                    navbookpath = bk.id_to_bookpath(navid)
+                navbookpath = bk.id_to_bookpath(navid)
         if navid is None:
             print("Error: nav property missing from the opf manifest propertiese")
             return -1
@@ -378,17 +347,31 @@ def run(bk):
             print("Error: proper aria accessibility roles can not be set for javascripted applications .... aborting")
             return -1
 
+    # update the package tag to include xml:lang attribute if missing
+    pkg_tag = bk.getpackagetag()
+    qp = bk.qp
+    qp.setContent(pkg_tag)
+    res = []
+    for text, tagprefix, tagname, tagtype, tagattr in qp.parse_iter():
+        if text is not None:
+            res.append(text)
+        else:
+            if tagname == "package" and tagtype == "begin":
+                if "xml:lang" not in tagattr:
+                    tagattr["xml:lang"] = plang
+            res.append(qp.tag_info_to_xml(tagname, tagtype, tagattr))
+    pkg_tag = "".join(res)
+    bk.setpackagetag(pkg_tag)
+
+    # epub3 - collect titlemap and etypemap from the nav (key is file bookpath)
+    # epub2 - collect titlemap from the ncx (key is file bookpath)
     titlemap = {}
     etypemap = {}
     if E3:
-        # epub3 - collect titlemap and etypemap from the nav (key is file bookpath)
         titlemap, etypemap = parse_nav(bk, navid, navbookpath)
     else:
-        # epub2 - collect titlemap from the ncx (key is file bookpath)
         tocid = bk.gettocid()
-        ncxbookpath = "OEBPS/toc.ncx"
-        if bk.launcher_version() >= 20190927:
-            ncxbookpath = bk.id_to_bookpath(tocid)
+        ncxbookpath = bk.id_to_bookpath(tocid)
         titlemap = parse_ncx(bk, tocid, ncxbookpath)
 
     # now process every xhtml file (including the nav for E3)
@@ -399,9 +382,7 @@ def run(bk):
     print("\nProcessing all xhtml files to add accessibility features")
     imglst = []
     for mid, href in bk.text_iter():
-        bookpath = "OEBPS/" + href
-        if bk.launcher_version() >= 20190927:
-            bookpath = bk.id_to_bookpath(mid)
+        bookpath = bk.id_to_bookpath(mid)
     
         print("   ... updating: ", bookpath, " with manifest id: ", mid)
         xhtmldata, ilst = convert_xhtml(bk, mid, bookpath, plang, titlemap, etypemap, E3)
@@ -414,77 +395,53 @@ def run(bk):
 
     # first prevent unsafe access of any files within Sigil 
     # by creating a temporary copy of each image in temp_dir
+    # and build up database of bookpath to mimetype
+    imgmime = {}
     temp_dir = tempfile.mkdtemp()
-    run_nsvg2png = False
     for mid, href, mime in bk.image_iter():
         imgdata = bk.readfile(mid)
-        bookpath = "OEBPS/" + href
-        if bk.launcher_version() >= 20190927:
-            bookpath = bk.id_to_bookpath(mid)
+        bookpath = bk.id_to_bookpath(mid)
         if mime == "image/svg+xml":
             imgdata = imgdata.encode('utf-8')
-            run_nsvg2png = True
         filepath = os.path.join(temp_dir, bookpath.replace("/",os.sep))
+        imgmime[bookpath] = mime
         destdir = os.path.dirname(filepath)
         if not os.path.exists(destdir):
             os.makedirs(destdir)
         with open(filepath, "wb") as f:
             f.write(imgdata)
-        if run_nsvg2png:
-            args=[exe_path, filepath]
-            try: 
-                process = Popen(args, stdout=PIPE, stderr=PIPE)
-                res_out, res_err = process.communicate()
-                retcode = process.returncode
-            except:
-                retcode = -1
-            if retcode != 0:
-                with open(os.path.join(SCRIPT_DIR, "missing_image.png"),"rb") as f:
-                    imgdata = f.read()
-                    filepath = filepath + ".png"
-                    with open(filepath, "wb") as f:
-                        f.write(imgdata)
-            run_nsvg2png = False
 
 
     # now build a list of images and current alt text to pass to the gui
     altlist = []
-    for (mid, bookpath, imgcnt, imgsrc, alttext) in imglst:
+    for (mid, bookpath, imgcnt, imgsrc, imgbookpath, alttext) in imglst:
         print("   ... ", bookpath, " #", imgcnt, " src:", imgsrc, " alt text:", alttext)
-        urlobj = urlparse(imgsrc)
-        apath = unquote(urlobj.path)
-        filename = os.path.basename(apath)
-        imgbookpath = "OEBPS/Images/" + filename
-        if bk.launcher_version() >= 20190927:
-            imgbookpath = bk.build_bookpath(apath, bk.get_startingdir(bookpath))
         imgpath = os.path.join(temp_dir, imgbookpath.replace("/",os.sep))
-        # handle svg that have been converted to pngs
-        if imgpath.endswith(".svg"):
-            imgpath = imgpath + ".png"
         alttxt = xmldecode(alttext)
-        altlist.append([imgpath, alttxt])
+        mime = imgmime[imgbookpath]
+        key = imgbookpath + _US + bookpath + _US + str(imgcnt)
+        altlist.append([imgpath, imgbookpath, mime, key, alttxt])
 
     # Allow the User to Change Any alt text strings they desire
     basewidth = prefs['basewidth']
-    naltlist = []
+    naltdict = None
     if len(altlist) > 0:
-       naltlist = GUIUpdateFromList("Update Alt Text for Each Image", altlist, basewidth)
+       naltdict = GUIUpdateFromList(altlist, basewidth)
 
     # done with temp folder so clean up after yourself
     shutil.rmtree(temp_dir)
 
-
-    # process results of alt text gui updates and update the actual xhtml
-    print("\n\nUpdating any changed alt attributes for img tags")
-    ptr = 0
-    for imgpath, altnew in naltlist:
-        mid, bookpath, imgcnt, imgsrc, alttext = imglst[ptr]
-        if alttext != altnew:
-            print("    ... alt text needs to be updated in: ", bookpath, imgsrc, altnew)
-            data = bk.readfile(mid)
-            data = update_alt_text(bk, data, imgcnt, imgsrc, altnew)
-            bk.writefile(mid, data)
-        ptr += 1
+    if naltdict:
+        # process results of alt text gui updates and update the actual xhtml
+        print("\n\nUpdating any changed alt attributes for img tags")
+        for mid, bookpath, imgcnt, imgsrc, imgbookpath, alttext in imglst:
+            key = imgbookpath + _US + bookpath + _US + str(imgcnt)
+            altnew = naltdict[key]
+            if alttext != altnew:
+                print("    ... alt text needs to be updated in: ", bookpath, imgsrc, altnew)
+                data = bk.readfile(mid)
+                data = update_alt_text(bk, data, imgcnt, imgsrc, altnew)
+                bk.writefile(mid, data)
     
     print("Updating Complete")
     bk.savePrefs(prefs)
@@ -616,6 +573,8 @@ def convert_xhtml(bk, mid, bookpath, plang, titlemap, etypemap, E3):
         (loctype, fragment, etype) = etypemap[bookpath] 
     imgcnt = 0
     imglst = []
+    start_dir = bk.get_startingdir(bookpath)
+    
     for text, tprefix, tname, ttype, tattr in qp.parse_iter():
         # bug in quickparser does not properly trim attribute names
         if tattr:
@@ -665,7 +624,10 @@ def convert_xhtml(bk, mid, bookpath, plang, titlemap, etypemap, E3):
                 alttext = tattr.get("alt", "")
                 tattr["alt"] = alttext
                 imgsrc = tattr.get("src","")
-                imglst.append((mid,bookpath,imgcnt,imgsrc,alttext)) 
+                urlobj = urlparse(imgsrc)
+                apath = unquote(urlobj.path)
+                imgbookpath = bk.build_bookpath(apath, start_dir)
+                imglst.append((mid, bookpath, imgcnt, imgsrc, imgbookpath, alttext)) 
 
             # build add any aria roles you know based on epub:type attributes
             # handle multiple epub:type attribute values
@@ -715,7 +677,7 @@ def convert_xhtml(bk, mid, bookpath, plang, titlemap, etypemap, E3):
 def update_alt_text(bk, xhtmldata, imgcnt, imgsrc, alttext):
     res = []
     imgptr = 0
-    #parse the xhtml, converting on the fly to update it
+    # parse the xhtml, converting on the fly to update it
     qp = bk.qp
     qp.setContent(xhtmldata)
     for text, tprefix, tname, ttype, tattr in qp.parse_iter():

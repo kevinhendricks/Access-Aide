@@ -1,3 +1,20 @@
+v091
+   - reverted to allowing duplicate images each with their own alt tag per link
+   - Fix bug in Alt Text Editor cancel not actually canceling the image alt text updates
+
+v090 - Beta
+  - completely removed the  use of the Tk graphical user interface for image
+    alt text editing becasue Tk and Pillow have no support for pure svg images.
+    
+    To replace it, The Qt for Python graphical user interface as provided by
+    PySide6 (for Qt6) and PyQt5 (for Qt5) is used instead.  The resulting Qt
+    based Alt Text Editing dialog is much improved and much more stable.
+
+    As a result the new minimum supported version of Sigil is ***Sigil 1.60 or later***
+
+  - if the OPF package tag does not have an xml:lang element to indicate the primary
+    language of its metadata tags, one is now added based the primary epub dc:language
+
 v055
   - add workaround for parsing glitch in quickparser
 
