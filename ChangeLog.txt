@@ -1,3 +1,7 @@
+v095
+   - add support for auto filling in empty image alt-text attributes based
+     on image XMP AltTextAccessibility metadata or exif ImageDescription metadata
+
 v091
    - reverted to allowing duplicate images each with their own alt tag per link
    - Fix bug in Alt Text Editor cancel not actually canceling the image alt text updates

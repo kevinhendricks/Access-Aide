@@ -2,7 +2,7 @@
 # -*- coding: utf-8 -*-
 # vim:ts=4:sw=4:softtabstop=4:smarttab:expandtab
 
-# Copyright 2015-2023 Kevin B. Hendricks, Stratford Ontario
+# Copyright 2015-2024 Kevin B. Hendricks, Stratford Ontario
 
 # This plugin's source code is available under the GNU LGPL Version 2.1 or GNU LGPL Version 3 License.
 # See https://www.gnu.org/licenses/old-licenses/lgpl-2.1.en.html or
@@ -17,6 +17,8 @@ import inspect
 from accessgui import GUIUpdateFromList
 from urllib.parse import unquote
 from urllib.parse import urlparse
+from PIL import Image
+from sigil_bs4 import BeautifulSoup
 
 # define unit separator
 _US = chr(31)
@@ -203,6 +205,65 @@ def _role_from_etype(etype, tname, has_href, has_alt):
 _USER_HOME = os.path.expanduser("~")
 
 # default
+
+# extract base language from language code
+def baselang(lang):
+    if len(lang) > 3:
+        if lang[2:3] in "-_":
+            return lang[0:2]
+    return None
+
+def parse_xmpxml_for_alttext(xmpxml):
+    xmpmeta = BeautifulSoup(xmpxml, 'xml')
+    alt_dict = {}
+    if xmpmeta:
+        node = xmpmeta.find('AltTextAccessibility')
+        if node:
+            for element in node.find_all('li'):
+                lang = element.get('xml:lang', 'x-default')
+                alt_dict[lang] = element.text
+                lg = baselang(lang)
+                if lg:
+                    alt_dict[lg] = element.txt
+    return alt_dict
+
+# extract alt text from image metadata
+def get_image_metadata_alttext(imgpath, tgtlang):
+    xmpxml = None
+    description = ""
+    with Image.open(imgpath) as im:
+        if im.format == 'WebP':
+            xmpxml = im.info["xmp"]
+        if im.format == 'PNG':
+            xmpxml = im.info["XML:com.adobe.xmp"]
+        if im.format == 'TIFF':
+            xmpxml = im.tag_v2[700]
+        if im.format == 'JPEG':
+            for segment, content in im.applist:
+                if segment == "APP1":
+                    marker, xmp_tags = content.split(b"\x00")[:2]
+                if marker == b"http://ns.adobe.com/xap/1.0/":
+                    xmpxml = xmp_tags
+                    break
+        exif = im.getexif()
+        # 270 = ImageDescription
+        if exif and 270 in exif:
+            description = exif[270]
+    if not xmpxml:
+        return description
+    alt_dict = parse_xmpxml_for_alttext(xmpxml)
+    # first try full language code match
+    if tgtlang in alt_dict:
+        return alt_dict[tgtlang]
+     # next try base language code match
+    lg = baselang(tgtlang)
+    if lg and lg in alt_dict:
+        return alt_dict[lg]
+    # use default
+    if 'x-default' in alt_dict:
+        return alt_dict['x-default']
+    # otherwise fall back to exif image description
+    return description
 
 # encode strings for xml
 def xmlencode(data):
@@ -417,6 +478,8 @@ def run(bk):
     for (mid, bookpath, imgcnt, imgsrc, imgbookpath, alttext) in imglst:
         print("   ... ", bookpath, " #", imgcnt, " src:", imgsrc, " alt text:", alttext)
         imgpath = os.path.join(temp_dir, imgbookpath.replace("/",os.sep))
+        if not alttext or alttext=='':
+            alttext = get_image_metadata_alttext(imgpath, plang)
         alttxt = xmldecode(alttext)
         mime = imgmime[imgbookpath]
         key = imgbookpath + _US + bookpath + _US + str(imgcnt)
