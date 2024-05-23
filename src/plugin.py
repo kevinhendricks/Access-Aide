@@ -233,11 +233,14 @@ def get_image_metadata_alttext(imgpath, tgtlang):
     description = ""
     with Image.open(imgpath) as im:
         if im.format == 'WebP':
-            xmpxml = im.info["xmp"]
+            if "xmp" in im.info:
+               xmpxml = im.info["xmp"]
         if im.format == 'PNG':
-            xmpxml = im.info["XML:com.adobe.xmp"]
+            if "XML:com.adobe.xmp" in im.info:
+                xmpxml = im.info["XML:com.adobe.xmp"]
         if im.format == 'TIFF':
-            xmpxml = im.tag_v2[700]
+            if 700 in im.tag_v2:
+                xmpxml = im.tag_v2[700]
         if im.format == 'JPEG':
             for segment, content in im.applist:
                 if segment == "APP1":

@@ -1,3 +1,6 @@
+v096
+   - better handle cases when no xmpxml is available
+
 v095
    - add support for auto filling in empty image alt-text attributes based
      on image XMP AltTextAccessibility metadata or exif ImageDescription metadata
