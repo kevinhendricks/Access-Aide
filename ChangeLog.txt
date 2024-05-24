@@ -1,3 +1,6 @@
+v097
+  - fix whitespace indentaion error caused by copy /paste
+
 v096
    - better handle cases when no xmpxml is available
 

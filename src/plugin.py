@@ -245,9 +245,9 @@ def get_image_metadata_alttext(imgpath, tgtlang):
             for segment, content in im.applist:
                 if segment == "APP1":
                     marker, xmp_tags = content.split(b"\x00")[:2]
-                if marker == b"http://ns.adobe.com/xap/1.0/":
-                    xmpxml = xmp_tags
-                    break
+                    if marker == b"http://ns.adobe.com/xap/1.0/":
+                        xmpxml = xmp_tags
+                        break
         exif = im.getexif()
         # 270 = ImageDescription
         if exif and 270 in exif:
