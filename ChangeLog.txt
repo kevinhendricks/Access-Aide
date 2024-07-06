@@ -1,3 +1,8 @@
+v100
+  - restrict adding xml:lang attribute to epub3 opf package tags
+  - instead of exiting when audio, video, javascript, and mathml are used in the epub
+      the accessbility schema metadata is simply not added, but all other functionality is employed
+
 v097
   - fix whitespace indentaion error caused by copy /paste
 

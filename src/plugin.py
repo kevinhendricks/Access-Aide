@@ -320,19 +320,42 @@ def run(bk):
     prefs = bk.getPrefs()
     prefs.defaults['basewidth'] = 500
 
-    # before anything check for video and audio files and abort if they exist
-    has_audio_video = False
+    # before anything check to verify accessibilility schema criteria are met
+    # no video or audio files, no javascript, no mathml
+    add_accessibility_metadata = True
     for mid, href, mime in bk.media_iter():
         if mime.startswith('audio') or mime.startswith('video'):
-            has_audio_video = True
-    if has_audio_video:
-        print("Error: Access-Aide can not handle epubs with audio and video resources")
-        return -1
+            add_accessibility_metadata = False
 
+    # Assume no mathml or javascript in epub2 for the time being until a real
+    # test can be determined by walking all of the xhtml files.
+    # For E3 we can use the manifest properties
+    navid = None
+    navfilename = None
+    navbookpath = None
+    if E3:
+        for mid, href, mtype, mprops, fallback, moverlay in bk.manifest_epub3_iter():
+            if mprops is not None and "mathml" in mprops:
+                add_accessibility_metadata = False
+            if mprops is not None and "scripted" in mprops:
+                add_accessibility_metadata = False
+            if mprops is not None and "nav" in mprops:
+                navid = mid
+                urlobj = urlparse(href)
+                path = unquote(urlobj.path)
+                navfilename = os.path.basename(path)
+                navbookpath = bk.id_to_bookpath(navid)
+        if navid is None:
+            print("Error: nav property missing from the opf manifest propertiese")
+            return -1
+
+    if not add_accessibility_metadata: 
+        print("Warning: accessibility metadata will not be added due to use of video, audio, mathml, or javascript") 
 
     # find primary language from first dc:language tag
     # and update metadata to include the accessibility metadata
-    print("\nUpdating the OPF with accessibility schema")
+    if add_accessibility_metadata:
+        print("\nUpdating the OPF with accessibility schema")
     plang = None
     res = []
     has_access_meta = False
@@ -359,15 +382,15 @@ def run(bk):
                         has_access_meta = True
             if tagname == "metadata" and tagtype == "end":
                 # insert accessibility metadata if needed (assumes schema:accessModeSufficient="textual")
-                # which is why we abort if audio or video used, javascript, etc
-                if E3 and not has_access_meta:
+                # which is why we abort if audio or video used, javascript, mathml
+                if E3 and not has_access_meta and add_accessibility_metadata:
                     res.append('<meta property="schema:accessibilitySummary">This publication conforms to WCAG 2.0 AA.</meta>\n')
                     res.append('<meta property="schema:accessMode">textual</meta>\n')
                     res.append('<meta property="schema:accessMode">visual</meta>\n')
                     res.append('<meta property="schema:accessModeSufficient">textual</meta>\n')
                     res.append('<meta property="schema:accessibilityFeature">structuralNavigation</meta>\n')
                     res.append('<meta property="schema:accessibilityHazard">none</meta>\n')
-                if not E3 and not has_access_meta:
+                if not E3 and not has_access_meta and add_accessibility_metadata:
                     res.append('<meta name="schema:accessibilitySummary" content="This publication conforms to WCAG 2.0 AA."/>\n')
                     res.append('<meta name="schema:accessMode" content="textual"/>\n')
                     res.append('<meta name="schema:accessModeSufficient" content="textual"/>\n')
@@ -381,51 +404,22 @@ def run(bk):
         print("Error: at least one dc:language must be specified in the opf")
         return -1
 
-
-    # Assume no mathml or javascript in epub2 for the time being until a real
-    # test can be determined walking all of the xhtml files.
-    # For E3 we can use the manifest properties
-    navid = None
-    navfilename = None
+    # // update the package tag to include xml:lang attribute if missing but epub3 only
     if E3:
-        uses_mathml = False
-        uses_script = False
-        for mid, href, mtype, mprops, fallback, moverlay in bk.manifest_epub3_iter():
-            if mprops is not None and "mathml" in mprops:
-                uses_mathml = True
-            if mprops is not None and "scripted" in mprops:
-                uses_script = True
-            if mprops is not None and "nav" in mprops:
-                navid = mid
-                urlobj = urlparse(href)
-                path = unquote(urlobj.path)
-                navfilename = os.path.basename(path)
-                navbookpath = bk.id_to_bookpath(navid)
-        if navid is None:
-            print("Error: nav property missing from the opf manifest propertiese")
-            return -1
-        if uses_mathml:
-            print("Error: accessibility schema metadata is not set to handle mathml ... aborting")
-            return -1
-        if uses_script:
-            print("Error: proper aria accessibility roles can not be set for javascripted applications .... aborting")
-            return -1
-
-    # update the package tag to include xml:lang attribute if missing
-    pkg_tag = bk.getpackagetag()
-    qp = bk.qp
-    qp.setContent(pkg_tag)
-    res = []
-    for text, tagprefix, tagname, tagtype, tagattr in qp.parse_iter():
-        if text is not None:
-            res.append(text)
-        else:
-            if tagname == "package" and tagtype == "begin":
-                if "xml:lang" not in tagattr:
-                    tagattr["xml:lang"] = plang
-            res.append(qp.tag_info_to_xml(tagname, tagtype, tagattr))
-    pkg_tag = "".join(res)
-    bk.setpackagetag(pkg_tag)
+        pkg_tag = bk.getpackagetag()
+        qp = bk.qp
+        qp.setContent(pkg_tag)
+        res = []
+        for text, tagprefix, tagname, tagtype, tagattr in qp.parse_iter():
+            if text is not None:
+                res.append(text)
+            else:
+                if tagname == "package" and tagtype == "begin":
+                    if "xml:lang" not in tagattr:
+                        tagattr["xml:lang"] = plang
+                res.append(qp.tag_info_to_xml(tagname, tagtype, tagattr))
+        pkg_tag = "".join(res)
+        bk.setpackagetag(pkg_tag)
 
     # epub3 - collect titlemap and etypemap from the nav (key is file bookpath)
     # epub2 - collect titlemap from the ncx (key is file bookpath)

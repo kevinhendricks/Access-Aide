@@ -1,8 +1,8 @@
 **[Plugin] Access-Aide - help improve epub accessibility**
 
-Updated: May 24, 2024
+Updated: July 6, 2024
 
-Current Version: "0.9.7"
+Current Version: "1.0.0"
 
 License/Copying: GNU LGPL Version 2 or Version 3, your choice. Any other license terms are only available directly from the author in writing.
 
@@ -41,7 +41,7 @@ Then a graphical user interface is generated showing a thumbnail of every img ta
 
 
 **Limitations ...**
-1. In able to properly achieve the schema:accessModeSufficient: textual critieria, Access-Aide will abort when provided with epubs that use javascripts, audio resources, video resources, and mathml because Access-Aide simply can not tell if the proper textual descriptions are provided in these cases.
+1. In able to properly achieve the schema:accessModeSufficient: textual critieria, Access-Aide will nnot add this metadata when provided with epubs that use javascripts, audio resources, video resources, and mathml because Access-Aide simply can not tell if the proper textual descriptions are provided in these cases.
 
 2. The schema:accessibilityHazard set to none indicates you are using only **static** images with no Video and no animated gifs. You need to verify that or manually update that metadata in the opf.
 
