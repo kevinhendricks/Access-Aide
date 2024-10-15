@@ -227,10 +227,27 @@ def parse_xmpxml_for_alttext(xmpxml):
                     alt_dict[lg] = element.txt
     return alt_dict
 
+# extract top level desc text from svg
+def parse_svgxml_for_desc(svgxml):
+    svgsoup = BeautifulSoup(svgxml, 'xml')
+    desc = ""
+    if svgsoup:
+        node = svgsoup.find('desc')
+        if node:
+            desc = node.text
+    return desc
+
 # extract alt text from image metadata
 def get_image_metadata_alttext(imgpath, tgtlang):
     xmpxml = None
     description = ""
+    # handle svg as special case since Pillow barfs on it
+    if imgpath.lower().endswith('.svg'):
+        svgxml=""
+        with open(imgpath, 'rb') as f:
+            svgxml = f.read().decode('utf-8')
+        description = parse_svgxml_for_desc(svgxml)
+        return description
     with Image.open(imgpath) as im:
         if im.format == 'WebP':
             if "xmp" in im.info:

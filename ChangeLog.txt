@@ -1,3 +1,6 @@
+v101
+  - parse svg xml to extract top level desc tag contents to handle svg alt strings
+  
 v100
   - restrict adding xml:lang attribute to epub3 opf package tags
   - instead of exiting when audio, video, javascript, and mathml are used in the epub

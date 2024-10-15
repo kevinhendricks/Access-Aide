@@ -1,8 +1,8 @@
 **[Plugin] Access-Aide - help improve epub accessibility**
 
-Updated: July 6, 2024
+Updated: October 15, 2024
 
-Current Version: "1.0.0"
+Current Version: "1.0.1"
 
 License/Copying: GNU LGPL Version 2 or Version 3, your choice. Any other license terms are only available directly from the author in writing.
 
